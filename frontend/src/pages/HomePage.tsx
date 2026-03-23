@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { FolderOpen, FileText, AlertCircle, CheckCircle2, Loader2, Upload, Search, MousePointerClick, Download, BarChart3 } from 'lucide-react'
+import { FolderOpen, FileText, AlertCircle, CheckCircle2, Loader2, Upload, Search, MousePointerClick, Download, BarChart3, PackageOpen } from 'lucide-react'
 import { listUseCases } from '../lib/api'
 import type { UseCaseSummary } from '../lib/types'
 
@@ -9,7 +9,8 @@ const STEPS = [
   { icon: Search, title: 'Parse', desc: 'ai_parse_document extracts text, tables, and bounding boxes' },
   { icon: MousePointerClick, title: 'Review', desc: 'Page-by-page view with color-coded bbox overlays — click to inspect' },
   { icon: CheckCircle2, title: 'Feedback', desc: 'Mark elements correct or flag issues with category + comment' },
-  { icon: Download, title: 'Export', desc: 'Download ZIP bundle or HTML report with annotated screenshots' },
+  { icon: Download, title: 'Export', desc: 'Two formats: ZIP bundle (full PDF + images + feedback, re-importable) or lightweight HTML report' },
+  { icon: PackageOpen, title: 'Import', desc: 'Re-import ZIP bundles to continue review on another instance' },
   { icon: BarChart3, title: 'Analyze', desc: 'View issue breakdown by category across documents' },
 ]
 
