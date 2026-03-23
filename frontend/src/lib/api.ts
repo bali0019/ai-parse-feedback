@@ -39,6 +39,13 @@ export const triggerParse = (id: string) =>
 export const deleteDocument = (id: string) =>
   request<{ status: string }>(`${BASE}/documents/${id}`, { method: 'DELETE' })
 
+export const runAiQuery = (documentId: string, elementId: number, pageId: number, prompt: string) =>
+  request<{ result: string; model: string; crop_size: string }>(`${BASE}/documents/${documentId}/element/${elementId}/ai-query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ page_id: pageId, prompt }),
+  })
+
 // Feedback
 export const submitFeedback = (body: {
   document_id: string

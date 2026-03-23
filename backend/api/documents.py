@@ -323,3 +323,54 @@ def delete_document(document_id: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(_cleanup)
 
     return {"status": "deleted", "document_id": document_id}
+
+
+@router.post("/{document_id}/element/{element_id}/ai-query")
+def run_ai_query_on_element(document_id: str, element_id: int, body: dict):
+    """Run ai_query on a cropped element region with a custom prompt."""
+    from services.ai_query_service import crop_and_query, get_default_prompt
+
+    doc = docs_db.get_document(document_id)
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    if not doc.get("parsed_result"):
+        raise HTTPException(400, "Document not parsed yet")
+
+    page_id = body.get("page_id", 0)
+    prompt = body.get("prompt", "")
+
+    # Find the element
+    elements = doc["parsed_result"].get("document", {}).get("elements", [])
+    element = next((e for e in elements if e.get("id") == element_id), None)
+    if not element:
+        raise HTTPException(404, f"Element {element_id} not found")
+
+    # Get bbox for this page
+    bbox = next((b for b in element.get("bbox", []) if b.get("page_id") == page_id), None)
+    if not bbox or not bbox.get("coord"):
+        raise HTTPException(400, f"No bounding box for element {element_id} on page {page_id}")
+
+    # Get page image URI
+    pages = doc["parsed_result"].get("document", {}).get("pages", [])
+    if page_id >= len(pages):
+        raise HTTPException(404, f"Page {page_id} not found")
+    image_uri = pages[page_id].get("image_uri")
+    if not image_uri:
+        raise HTTPException(400, "No image available for this page")
+
+    # Use default prompt if none provided
+    if not prompt.strip():
+        prompt = get_default_prompt(element.get("type", ""))
+
+    try:
+        result = crop_and_query(
+            image_uri=image_uri,
+            bbox_coord=bbox["coord"],
+            prompt=prompt,
+            element_type=element.get("type", ""),
+            current_content=element.get("content", ""),
+        )
+        return result
+    except Exception as e:
+        logger.error(f"ai_query failed for element {element_id}: {e}", exc_info=True)
+        raise HTTPException(500, f"ai_query failed: {str(e)}")

@@ -4,8 +4,8 @@
 
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, XCircle, Loader2, Save } from 'lucide-react'
-import { submitFeedback, getConfig } from '../lib/api'
+import { CheckCircle, XCircle, Loader2, Save, Sparkles, Copy, ArrowDownToLine } from 'lucide-react'
+import { submitFeedback, getConfig, runAiQuery } from '../lib/api'
 import type { Element, Feedback } from '../lib/types'
 
 interface Props {
@@ -25,6 +25,11 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
   const [comment, setComment] = useState('')
   const [suggestedContent, setSuggestedContent] = useState('')
   const [suggestedType, setSuggestedType] = useState('')
+  const [showAiQuery, setShowAiQuery] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiResult, setAiResult] = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   // Load existing feedback when element changes
   useEffect(() => {
@@ -41,6 +46,9 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
       setSuggestedContent('')
       setSuggestedType('')
     }
+    setShowAiQuery(false)
+    setAiResult(null)
+    setAiError(null)
   }, [existingFeedback, element.id])
 
   const mutation = useMutation({
@@ -88,6 +96,91 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
         )}
         {!element.content && !element.description && (
           <p className="text-sm text-gray-400 italic">No content</p>
+        )}
+      </div>
+
+      {/* Re-parse with ai_query */}
+      <div>
+        <button
+          onClick={() => {
+            if (!showAiQuery) {
+              const defaults: Record<string, string> = {
+                table: 'Extract the table structure with all rows and columns from this image. Return as markdown table.',
+                text: 'Extract all text content from this image region exactly as it appears.',
+                figure: 'Describe what is shown in this image region in detail.',
+                section_header: 'Extract the heading/title text from this image region.',
+                list: 'Extract all list items from this image region.',
+                caption: 'Extract the caption text from this image region.',
+              }
+              setAiPrompt(defaults[element.type] || 'What content is in this image region? Extract it accurately.')
+            }
+            setShowAiQuery(!showAiQuery)
+          }}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border border-purple-200 text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors font-medium"
+        >
+          <Sparkles className="w-4 h-4" />
+          {showAiQuery ? 'Hide ai_query' : 'Re-parse with ai_query'}
+        </button>
+
+        {showAiQuery && (
+          <div className="mt-3 space-y-2">
+            <textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Enter your prompt..."
+              rows={3}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+            />
+            <button
+              onClick={async () => {
+                setAiLoading(true)
+                setAiError(null)
+                setAiResult(null)
+                try {
+                  const res = await runAiQuery(documentId, element.id, pageId, aiPrompt)
+                  setAiResult(res.result)
+                } catch (e) {
+                  setAiError((e as Error).message)
+                } finally {
+                  setAiLoading(false)
+                }
+              }}
+              disabled={aiLoading || !aiPrompt.trim()}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-medium"
+            >
+              {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {aiLoading ? 'Running ai_query...' : 'Run'}
+            </button>
+
+            {aiError && (
+              <p className="text-xs text-red-600">{aiError}</p>
+            )}
+
+            {aiResult && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-gray-500 uppercase">ai_query Result</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(aiResult)}
+                      className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                      title="Copy to clipboard"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setSuggestedContent(aiResult)}
+                      className="flex items-center gap-1 px-2 py-0.5 text-xs text-purple-600 hover:bg-purple-50 rounded font-medium"
+                      title="Use as suggested content"
+                    >
+                      <ArrowDownToLine className="w-3 h-3" /> Use as suggestion
+                    </button>
+                  </div>
+                </div>
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap max-h-48 overflow-y-auto">{aiResult}</pre>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
