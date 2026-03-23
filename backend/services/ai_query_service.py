@@ -138,8 +138,10 @@ def crop_and_query(
     max_wait = 120
     start = time.time()
     while stmt.status.state.value in ("PENDING", "RUNNING"):
-        if time.time() - start > max_wait:
+        elapsed = time.time() - start
+        if elapsed > max_wait:
             raise Exception(f"ai_query timeout after {max_wait}s")
+        logger.info(f"ai_query polling... state={stmt.status.state.value}, elapsed={elapsed:.0f}s")
         time.sleep(2)
         stmt = w.statement_execution.get_statement(stmt.statement_id)
 

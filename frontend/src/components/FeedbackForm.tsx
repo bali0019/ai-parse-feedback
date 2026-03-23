@@ -158,7 +158,7 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border border-purple-200 text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors font-medium"
         >
           <Sparkles className="w-4 h-4" />
-          {showAiQuery ? 'Hide AI re-extraction' : 'Ask AI to re-read this'}
+          {showAiQuery ? 'Hide ai_query' : 'Re-extract with ai_query'}
         </button>
 
         {showAiQuery && (
@@ -190,7 +190,7 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
               className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-medium"
             >
               {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {aiLoading ? 'AI is re-reading this section...' : 'Run'}
+              {aiLoading ? 'Running ai_query...' : 'Run'}
             </button>
 
             {aiError && <p className="text-xs text-red-600">{aiError}</p>}
@@ -198,7 +198,7 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
             {aiResult && !aiResultApplied && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-gray-500 uppercase">AI Extraction Result</span>
+                  <span className="text-xs font-medium text-gray-500 uppercase">ai_query Result</span>
                   <button onClick={() => navigator.clipboard.writeText(aiResult)} className="p-1 text-gray-400 hover:text-gray-600 rounded" title="Copy">
                     <Copy className="w-3.5 h-3.5" />
                   </button>
@@ -215,7 +215,7 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
                   onClick={() => {
                     setIsCorrect(false)
                     setSuggestedContent(aiResult)
-                    setComment('AI suggested different content (model: databricks-claude-sonnet-4)')
+                    setComment('ai_query suggested different content (model: databricks-claude-sonnet-4)')
                     setAiResultApplied(true)
                   }}
                   className="w-full mt-3 flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
@@ -231,7 +231,7 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
                 onClick={() => setAiResultApplied(false)}
                 className="w-full text-left px-3 py-2 text-xs text-purple-600 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100"
               >
-                AI suggestion applied. Click to review.
+                ai_query suggestion applied. Click to review.
               </button>
             )}
           </div>
