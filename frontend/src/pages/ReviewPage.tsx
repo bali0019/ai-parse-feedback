@@ -6,7 +6,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, ArrowLeft, Download, Loader2, CheckCircle2, AlertCircle, CheckCheck, Keyboard } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowLeft, Download, Loader2, CheckCircle2, AlertCircle, CheckCheck, Keyboard, Filter, X } from 'lucide-react'
 import { getDocument, getPageData, getDocumentFeedback, getDocumentPdfUrl, startExport, getExportStatus, downloadExportUrl, reportUrl, submitFeedback, bulkSubmitFeedback } from '../lib/api'
 import { FileText as FileTextIcon } from 'lucide-react'
 import PageAnnotator from '../components/PageAnnotator'
@@ -22,6 +22,12 @@ export default function ReviewPage() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [autoSelectFirst, setAutoSelectFirst] = useState(false)
   const [pageInputValue, setPageInputValue] = useState('1')
+  const [activeTypeFilters, setActiveTypeFilters] = useState<Set<string>>(new Set())
+
+  const ELEMENT_COLORS: Record<string, string> = {
+    section_header: '#FF6B6B', text: '#4ECDC4', figure: '#45B7D1', caption: '#96CEB4',
+    page_footer: '#FFEAA7', page_header: '#DDA0DD', table: '#98D8C8', list: '#F7DC6F',
+  }
 
   // Fetch document metadata
   const { data: doc, isLoading: docLoading } = useQuery({
@@ -41,6 +47,55 @@ export default function ReviewPage() {
 
   const totalPages = doc?.page_count || pageData?.total_pages || 0
 
+  // Build page→element types index from parsed_result (for filtering)
+  const { pageTypeIndex, allElementTypes } = useMemo(() => {
+    const index = new Map<number, Set<string>>()
+    const types = new Set<string>()
+    const elements = doc?.parsed_result?.document?.elements || []
+    for (const elem of elements) {
+      if (elem.type) types.add(elem.type)
+      for (const bbox of elem.bbox || []) {
+        if (bbox.page_id != null) {
+          if (!index.has(bbox.page_id)) index.set(bbox.page_id, new Set())
+          index.get(bbox.page_id)!.add(elem.type)
+        }
+      }
+    }
+    return { pageTypeIndex: index, allElementTypes: Array.from(types).sort() }
+  }, [doc?.parsed_result])
+
+  // Filtered pages: only pages containing at least one matching element type
+  const filteredPages = useMemo(() => {
+    if (activeTypeFilters.size === 0) return null // null = no filter active, show all
+    const pages: number[] = []
+    for (let i = 0; i < totalPages; i++) {
+      const types = pageTypeIndex.get(i)
+      if (types) {
+        for (const t of activeTypeFilters) {
+          if (types.has(t)) { pages.push(i); break }
+        }
+      }
+    }
+    return pages
+  }, [activeTypeFilters, pageTypeIndex, totalPages])
+
+  // When filter changes and current page is excluded, jump to first matching page
+  useEffect(() => {
+    if (filteredPages && filteredPages.length > 0 && !filteredPages.includes(currentPage)) {
+      setCurrentPage(filteredPages[0])
+      setSelectedElementId(null)
+    }
+  }, [filteredPages])
+
+  const toggleTypeFilter = useCallback((type: string) => {
+    setActiveTypeFilters(prev => {
+      const next = new Set(prev)
+      if (next.has(type)) next.delete(type)
+      else next.add(type)
+      return next
+    })
+  }, [])
+
   // Keep page input in sync with currentPage
   useEffect(() => {
     setPageInputValue(String(currentPage + 1))
@@ -53,6 +108,13 @@ export default function ReviewPage() {
       setAutoSelectFirst(false)
     }
   }, [autoSelectFirst, pageData])
+
+  // Elements filtered by active type filters
+  const visibleElements = useMemo(() => {
+    if (!pageData) return []
+    if (activeTypeFilters.size === 0) return pageData.elements
+    return pageData.elements.filter(e => activeTypeFilters.has(e.type))
+  }, [pageData, activeTypeFilters])
 
   // Find the selected element
   const selectedElement = useMemo(() => {
@@ -232,6 +294,33 @@ export default function ReviewPage() {
     }
   }
 
+  // Page navigation helpers (respect filtered pages)
+  const goNextPage = useCallback(() => {
+    if (filteredPages) {
+      const idx = filteredPages.indexOf(currentPage)
+      if (idx < filteredPages.length - 1) {
+        setCurrentPage(filteredPages[idx + 1])
+        setSelectedElementId(null)
+      }
+    } else if (currentPage < totalPages - 1) {
+      setCurrentPage(p => p + 1)
+      setSelectedElementId(null)
+    }
+  }, [filteredPages, currentPage, totalPages])
+
+  const goPrevPage = useCallback(() => {
+    if (filteredPages) {
+      const idx = filteredPages.indexOf(currentPage)
+      if (idx > 0) {
+        setCurrentPage(filteredPages[idx - 1])
+        setSelectedElementId(null)
+      }
+    } else if (currentPage > 0) {
+      setCurrentPage(p => p - 1)
+      setSelectedElementId(null)
+    }
+  }, [filteredPages, currentPage, totalPages])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -255,23 +344,17 @@ export default function ReviewPage() {
           break
         case 'ArrowRight':
           e.preventDefault()
-          if (currentPage < totalPages - 1) {
-            setCurrentPage(p => p + 1)
-            setSelectedElementId(null)
-          }
+          goNextPage()
           break
         case 'ArrowLeft':
           e.preventDefault()
-          if (currentPage > 0) {
-            setCurrentPage(p => p - 1)
-            setSelectedElementId(null)
-          }
+          goPrevPage()
           break
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [quickMarkCorrect, selectNextElement, selectPrevElement, currentPage, totalPages])
+  }, [quickMarkCorrect, selectNextElement, selectPrevElement, goNextPage, goPrevPage])
 
   if (docLoading) {
     return (
@@ -405,8 +488,8 @@ export default function ReviewPage() {
       {/* Page navigator with jump-to input */}
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center justify-center gap-4 shrink-0">
         <button
-          onClick={() => { setCurrentPage(p => Math.max(0, p - 1)); setSelectedElementId(null) }}
-          disabled={currentPage === 0}
+          onClick={goPrevPage}
+          disabled={filteredPages ? filteredPages.indexOf(currentPage) <= 0 : currentPage === 0}
           className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -425,11 +508,14 @@ export default function ReviewPage() {
             className="w-14 text-center text-sm font-medium bg-white border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400"
           />
           <span className="text-sm text-gray-500">of {totalPages}</span>
+          {filteredPages && (
+            <span className="text-xs text-blue-600 ml-1">({filteredPages.length} matching)</span>
+          )}
         </div>
 
         <button
-          onClick={() => { setCurrentPage(p => Math.min(totalPages - 1, p + 1)); setSelectedElementId(null) }}
-          disabled={currentPage >= totalPages - 1}
+          onClick={goNextPage}
+          disabled={filteredPages ? filteredPages.indexOf(currentPage) >= filteredPages.length - 1 : currentPage >= totalPages - 1}
           className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"
         >
           <ChevronRight className="w-5 h-5" />
@@ -451,7 +537,7 @@ export default function ReviewPage() {
               imageHeight={pageData.image?.height || 1000}
               pdfUrl={!pageData.image ? getDocumentPdfUrl(documentId!) : null}
               pageNumber={currentPage + 1}
-              elements={pageData.elements}
+              elements={visibleElements}
               pageId={currentPage}
               selectedElementId={selectedElementId}
               feedbackMap={pageData.feedback}
@@ -465,10 +551,44 @@ export default function ReviewPage() {
 
         {/* Right: Element list + feedback */}
         <div className="w-[400px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
+          {/* Element type filter chips */}
+          {allElementTypes.length > 1 && (
+            <div className="p-2 border-b border-gray-100 flex flex-wrap gap-1.5 items-center">
+              <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              {allElementTypes.map(type => {
+                const active = activeTypeFilters.has(type)
+                const color = ELEMENT_COLORS[type] || '#BDC3C7'
+                return (
+                  <button
+                    key={type}
+                    onClick={() => toggleTypeFilter(type)}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                      active
+                        ? 'border-current bg-opacity-20'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}
+                    style={active ? { color, borderColor: color, backgroundColor: color + '20' } : undefined}
+                  >
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                    {type.replace('_', ' ')}
+                  </button>
+                )
+              })}
+              {activeTypeFilters.size > 0 && (
+                <button
+                  onClick={() => setActiveTypeFilters(new Set())}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3 h-3" /> Clear
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Element list header + mark page correct */}
           <div className="p-3 border-b border-gray-100 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              Elements ({pageData?.elements.length || 0})
+              Elements ({visibleElements.length}{activeTypeFilters.size > 0 && pageData ? `/${pageData.elements.length}` : ''})
             </h3>
             {reviewStats.unreviewed > 0 && (
               <button
@@ -489,7 +609,7 @@ export default function ReviewPage() {
           {/* Element list */}
           <div className="flex-1 overflow-y-auto">
             <div className="divide-y divide-gray-50">
-              {pageData?.elements
+              {pageData && visibleElements
                 .slice()
                 .sort((a, b) => {
                   // Sort: flagged unreviewed first, then unreviewed, then reviewed
