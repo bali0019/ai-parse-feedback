@@ -1,0 +1,33 @@
+command:
+  - "python"
+  - "-m"
+  - "uvicorn"
+  - "main:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+  - "--app-dir"
+  - "backend"
+
+env:
+  # App resources (resolved from databricks.yml)
+  - name: VOLUME_PATH
+    valueFrom: 'source-volume'
+
+  - name: IMAGE_OUTPUT_VOLUME_PATH
+    valueFrom: 'image-output-volume'
+
+  - name: SQL_WAREHOUSE_ID
+    valueFrom: 'parse-warehouse'
+
+  # Lakebase instance name for credential generation
+  - name: LAKEBASE_INSTANCE_NAME
+    value: 'ai-parse-feedback-db'
+
+  # Background export/import job
+  - name: EXPORT_JOB_ID
+    valueFrom: 'export-job'
+
+  # NOTE: Lakebase PG env vars (PGHOST, PGPORT, PGUSER, PGDATABASE, PGSSLMODE)
+  # are auto-injected when database resource is defined in databricks.yml
