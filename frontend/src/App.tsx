@@ -63,21 +63,26 @@ function ActiveJobsBar() {
 }
 
 export default function App() {
+  const location = useLocation()
+  const isReviewPage = location.pathname.startsWith('/review/')
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center gap-6">
-          <Link to="/" className="text-lg font-bold text-gray-900 hover:text-blue-600">AI Parse Feedback</Link>
-          <nav className="flex gap-2">
-            <NavLink to="/">Home</NavLink>
-            <NavLink to="/upload">Upload</NavLink>
-            <NavLink to="/documents">Documents</NavLink>
-            <NavLink to="/analytics">Analytics</NavLink>
-          </nav>
-        </div>
-        <ActiveJobsBar />
-      </header>
-      <main>
+    <div className={isReviewPage ? 'h-screen overflow-hidden' : 'min-h-screen bg-gray-50'}>
+      {!isReviewPage && (
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center gap-6">
+            <Link to="/" className="text-lg font-bold text-gray-900 hover:text-blue-600">AI Parse Feedback</Link>
+            <nav className="flex gap-2">
+              <NavLink to="/">Home</NavLink>
+              <NavLink to="/upload">Upload</NavLink>
+              <NavLink to="/documents">Documents</NavLink>
+              <NavLink to="/analytics">Analytics</NavLink>
+            </nav>
+          </div>
+          <ActiveJobsBar />
+        </header>
+      )}
+      <main className={isReviewPage ? 'h-full' : ''}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/upload" element={<UploadPage />} />
