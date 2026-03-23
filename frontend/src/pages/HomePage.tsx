@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { FolderOpen, FileText, AlertCircle, CheckCircle2, Loader2, Upload, Search, MousePointerClick, Download, BarChart3, PackageOpen, ChevronRight } from 'lucide-react'
-import { listUseCases } from '../lib/api'
+import { listUseCases, startImport, getImportStatus } from '../lib/api'
 import type { UseCaseSummary } from '../lib/types'
 
 const STEPS = [
@@ -16,6 +17,38 @@ const STEPS = [
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [importing, setImporting] = useState(false)
+
+  const handleImport = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.zip'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      setImporting(true)
+      try {
+        const { import_id, mode } = await startImport(file)
+        while (true) {
+          const s = await getImportStatus(import_id)
+          if (s.status === 'ready') {
+            alert(`Import complete! ${s.documents_imported || 1} document(s) with ${s.total_feedback_imported || 0} feedback items`)
+            break
+          }
+          if (s.status === 'error') { throw new Error(s.error || 'Import failed') }
+          await new Promise(r => setTimeout(r, mode === 'job' ? 5000 : 2000))
+        }
+        queryClient.invalidateQueries({ queryKey: ['use-cases'] })
+      } catch (err) {
+        alert(`Import failed: ${(err as Error).message}`)
+      } finally {
+        setImporting(false)
+      }
+    }
+    input.click()
+  }
+
   const { data: useCases, isLoading } = useQuery({
     queryKey: ['use-cases'],
     queryFn: listUseCases,
@@ -107,12 +140,20 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-            <div className="mt-5 pt-4 border-t border-gray-100">
+            <div className="mt-5 pt-4 border-t border-gray-100 flex flex-col gap-2">
               <button
                 onClick={() => navigate('/upload')}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
               >
                 Get Started
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={importing}
+                className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <PackageOpen className="w-4 h-4" />}
+                {importing ? 'Importing...' : 'Import ZIP'}
               </button>
             </div>
           </div>

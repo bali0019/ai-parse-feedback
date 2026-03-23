@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Upload, FileText, Loader2, CheckCircle2 } from 'lucide-react'
-import { uploadDocument, triggerParse, listUseCases } from '../lib/api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Upload, FileText, Loader2, CheckCircle2, PackageOpen } from 'lucide-react'
+import { uploadDocument, triggerParse, listUseCases, startImport, getImportStatus } from '../lib/api'
 
 interface UploadStatus {
   filename: string
@@ -18,8 +18,40 @@ export default function UploadPage() {
   const [files, setFiles] = useState<UploadStatus[]>([])
   const [processing, setProcessing] = useState(false)
   const [useCaseName, setUseCaseName] = useState(searchParams.get('use_case') || '')
+  const [importing, setImporting] = useState(false)
+  const queryClient = useQueryClient()
 
   const { data: existingUseCases } = useQuery({ queryKey: ['use-cases'], queryFn: listUseCases })
+
+  const handleImport = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.zip'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      setImporting(true)
+      try {
+        const { import_id, mode } = await startImport(file)
+        while (true) {
+          const s = await getImportStatus(import_id)
+          if (s.status === 'ready') {
+            alert(`Import complete! ${s.documents_imported || 1} document(s) with ${s.total_feedback_imported || 0} feedback items`)
+            break
+          }
+          if (s.status === 'error') { throw new Error(s.error || 'Import failed') }
+          await new Promise(r => setTimeout(r, mode === 'job' ? 5000 : 2000))
+        }
+        queryClient.invalidateQueries({ queryKey: ['documents'] })
+        queryClient.invalidateQueries({ queryKey: ['use-cases'] })
+      } catch (err) {
+        alert(`Import failed: ${(err as Error).message}`)
+      } finally {
+        setImporting(false)
+      }
+    }
+    input.click()
+  }
 
   const handleFiles = useCallback(async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
@@ -70,9 +102,19 @@ export default function UploadPage() {
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
       <h2 className="text-2xl font-bold text-gray-900 mb-2">Upload Documents</h2>
-      <p className="text-gray-500 mb-8">
-        Upload PDFs or images to parse with <code className="bg-gray-100 px-1 rounded">ai_parse_document</code> and review the results.
-      </p>
+      <div className="flex items-center justify-between mb-8">
+        <p className="text-gray-500">
+          Upload PDFs or images to parse with <code className="bg-gray-100 px-1 rounded">ai_parse_document</code> and review the results.
+        </p>
+        <button
+          onClick={handleImport}
+          disabled={importing}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 shrink-0"
+        >
+          {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <PackageOpen className="w-4 h-4" />}
+          {importing ? 'Importing...' : 'Import ZIP'}
+        </button>
+      </div>
 
       {/* Use case name input — required before upload */}
       <div className="mb-6 relative">
