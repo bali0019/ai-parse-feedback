@@ -23,6 +23,7 @@ export default function ReviewPage() {
   const [autoSelectFirst, setAutoSelectFirst] = useState(false)
   const [pageInputValue, setPageInputValue] = useState('1')
   const [activeTypeFilters, setActiveTypeFilters] = useState<Set<string>>(new Set())
+  const [elementListExpanded, setElementListExpanded] = useState(true)
 
   const ELEMENT_COLORS: Record<string, string> = {
     section_header: '#FF6B6B', text: '#4ECDC4', figure: '#45B7D1', caption: '#96CEB4',
@@ -115,6 +116,11 @@ export default function ReviewPage() {
     if (activeTypeFilters.size === 0) return pageData.elements
     return pageData.elements.filter(e => activeTypeFilters.has(e.type))
   }, [pageData, activeTypeFilters])
+
+  // Auto-collapse element list when an element is selected
+  useEffect(() => {
+    if (selectedElementId !== null) setElementListExpanded(false)
+  }, [selectedElementId])
 
   // Find the selected element
   const selectedElement = useMemo(() => {
@@ -550,7 +556,7 @@ export default function ReviewPage() {
         </div>
 
         {/* Right: Element list + feedback */}
-        <div className="w-[400px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
+        <div className="w-[440px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
           {/* Element type filter chips */}
           {allElementTypes.length > 1 && (
             <div className="p-2 border-b border-gray-100 flex flex-wrap gap-1.5 items-center">
@@ -586,10 +592,14 @@ export default function ReviewPage() {
           )}
 
           {/* Element list header + mark page correct */}
-          <div className="p-3 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+          <div className="p-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+            <button
+              onClick={() => setElementListExpanded(!elementListExpanded)}
+              className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-1 hover:text-gray-900"
+            >
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${elementListExpanded ? 'rotate-90' : ''}`} />
               Elements ({visibleElements.length}{activeTypeFilters.size > 0 && pageData ? `/${pageData.elements.length}` : ''})
-            </h3>
+            </button>
             {reviewStats.unreviewed > 0 && (
               <button
                 onClick={() => markPageCorrectMut.mutate()}
@@ -607,7 +617,11 @@ export default function ReviewPage() {
           </div>
 
           {/* Element list */}
-          <div className="flex-1 overflow-y-auto">
+          <div className={`overflow-y-auto transition-all duration-200 ${
+            selectedElement
+              ? elementListExpanded ? 'max-h-[40%] shrink-0' : 'max-h-[120px] shrink-0'
+              : 'flex-1'
+          }`}>
             <div className="divide-y divide-gray-50">
               {pageData && visibleElements
                 .slice()
@@ -653,7 +667,7 @@ export default function ReviewPage() {
 
           {/* Feedback form */}
           {selectedElement && (
-            <div className="border-t border-gray-200 p-4 overflow-y-auto max-h-[50%]">
+            <div className="border-t border-gray-200 p-4 overflow-y-auto flex-1 min-h-0">
               <FeedbackForm
                 documentId={documentId!}
                 element={selectedElement}

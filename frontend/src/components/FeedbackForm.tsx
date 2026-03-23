@@ -30,6 +30,7 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
   const [aiResult, setAiResult] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [contentExpanded, setContentExpanded] = useState(false)
 
   // Load existing feedback when element changes
   useEffect(() => {
@@ -77,13 +78,26 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
 
   return (
     <div className="space-y-4">
-      {/* Element info */}
+      {/* Element info — collapsible */}
       <div className="bg-gray-50 rounded-lg p-3">
-        <div className="text-xs text-gray-500 uppercase font-medium mb-1">
-          {element.type} #{element.id}
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-gray-500 uppercase font-medium">
+            {element.type} #{element.id}
+          </div>
+          {(element.content || element.description) && (
+            <button
+              onClick={() => setContentExpanded(!contentExpanded)}
+              className="text-xs text-blue-600 hover:text-blue-700"
+            >
+              {contentExpanded ? 'Collapse' : 'Show content'}
+            </button>
+          )}
         </div>
-        {element.content && (
-          <div className="text-sm text-gray-700 max-h-64 overflow-y-auto">
+        {!contentExpanded && element.content && (
+          <p className="text-xs text-gray-400 truncate mt-1">{element.content.replace(/<[^>]*>/g, '').slice(0, 80)}</p>
+        )}
+        {contentExpanded && element.content && (
+          <div className="text-sm text-gray-700 max-h-32 overflow-y-auto mt-1">
             {element.type === 'table' ? (
               <div className="text-xs" dangerouslySetInnerHTML={{ __html: element.content }} />
             ) : (
@@ -91,11 +105,11 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
             )}
           </div>
         )}
-        {element.description && !element.content && (
-          <p className="text-sm text-gray-500 italic max-h-64 overflow-y-auto">{element.description}</p>
+        {contentExpanded && element.description && !element.content && (
+          <p className="text-sm text-gray-500 italic max-h-32 overflow-y-auto mt-1">{element.description}</p>
         )}
         {!element.content && !element.description && (
-          <p className="text-sm text-gray-400 italic">No content</p>
+          <p className="text-sm text-gray-400 italic mt-1">No content</p>
         )}
       </div>
 
@@ -271,15 +285,17 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
         </>
       )}
 
-      {/* Submit */}
-      <button
-        onClick={() => mutation.mutate()}
-        disabled={isCorrect === null || mutation.isPending}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
-      >
-        {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-        {existingFeedback ? 'Update Feedback' : 'Submit Feedback'}
-      </button>
+      {/* Submit — sticky at bottom of scrollable area */}
+      <div className="sticky bottom-0 pt-3 -mx-4 px-4 pb-1 bg-gradient-to-t from-white via-white to-transparent">
+        <button
+          onClick={() => mutation.mutate()}
+          disabled={isCorrect === null || mutation.isPending}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-sm"
+        >
+          {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {existingFeedback ? 'Update Feedback' : 'Submit Feedback'}
+        </button>
+      </div>
 
       {mutation.isSuccess && (
         <p className="text-sm text-green-600 text-center">Saved!</p>
