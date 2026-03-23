@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { FolderOpen, FileText, AlertCircle, CheckCircle2, Loader2, Upload, Search, MousePointerClick, Download, BarChart3, PackageOpen } from 'lucide-react'
+import { FolderOpen, FileText, AlertCircle, CheckCircle2, Loader2, Upload, Search, MousePointerClick, Download, BarChart3, PackageOpen, ChevronRight } from 'lucide-react'
 import { listUseCases } from '../lib/api'
 import type { UseCaseSummary } from '../lib/types'
 
@@ -58,7 +58,7 @@ export default function HomePage() {
               <button
                 key={uc.use_case_name}
                 onClick={() => navigate(`/documents?use_case=${encodeURIComponent(uc.use_case_name)}`)}
-                className="bg-white border border-gray-200 rounded-xl px-5 py-4 text-left hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-4"
+                className="group bg-white border border-gray-200 rounded-xl px-5 py-4 text-left hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-4 cursor-pointer"
               >
                 <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
                   <FolderOpen className="w-4.5 h-4.5 text-blue-600" />
@@ -81,6 +81,7 @@ export default function HomePage() {
                     <span>{uc.total_issues} issues</span>
                   </div>
                 </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors shrink-0" />
               </button>
             ))}
           </div>
