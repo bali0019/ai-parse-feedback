@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, XCircle, Loader2, Save, Sparkles, Copy, ArrowDownToLine } from 'lucide-react'
+import { CheckCircle, XCircle, Loader2, Save, Sparkles, Copy } from 'lucide-react'
 import { submitFeedback, getConfig, runAiQuery } from '../lib/api'
 import type { Element, Feedback } from '../lib/types'
 
@@ -158,26 +158,28 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
 
             {aiResult && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-gray-500 uppercase">ai_query Result</span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => navigator.clipboard.writeText(aiResult)}
-                      className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                      title="Copy to clipboard"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => { setIsCorrect(false); setSuggestedContent(aiResult) }}
-                      className="flex items-center gap-1 px-2 py-0.5 text-xs text-purple-600 hover:bg-purple-50 rounded font-medium"
-                      title="Use as suggested content"
-                    >
-                      <ArrowDownToLine className="w-3 h-3" /> Use as suggestion
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(aiResult)}
+                    className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                    title="Copy to clipboard"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 <pre className="text-xs text-gray-700 whitespace-pre-wrap max-h-48 overflow-y-auto">{aiResult}</pre>
+                <button
+                  onClick={() => {
+                    setIsCorrect(false)
+                    setSuggestedContent(aiResult)
+                    setComment(`ai_query suggested different content (model: databricks-claude-sonnet-4)`)
+                  }}
+                  className="w-full mt-3 flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Apply as Suggested Correction
+                </button>
               </div>
             )}
           </div>
