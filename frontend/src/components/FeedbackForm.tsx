@@ -169,7 +169,7 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
                       <Copy className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => setSuggestedContent(aiResult)}
+                      onClick={() => { setIsCorrect(false); setSuggestedContent(aiResult) }}
                       className="flex items-center gap-1 px-2 py-0.5 text-xs text-purple-600 hover:bg-purple-50 rounded font-medium"
                       title="Use as suggested content"
                     >

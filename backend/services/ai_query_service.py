@@ -112,11 +112,16 @@ def crop_and_query(
     safe_prompt = full_prompt.replace("'", "''")
 
     sql_query = f"""
+    WITH cropped AS (
+        SELECT content
+        FROM READ_FILES('{temp_path}', format => 'binaryFile')
+    )
     SELECT ai_query(
-        'databricks-meta-llama-3-3-70b-instruct',
+        'databricks-claude-sonnet-4',
         '{safe_prompt}',
-        image => read_files('{temp_path}')
+        files => content
     ) AS result
+    FROM cropped
     """
 
     logger.info(f"Running ai_query on {temp_path}")
@@ -160,6 +165,6 @@ def crop_and_query(
 
     return {
         "result": result_text,
-        "model": "databricks-meta-llama-3-3-70b-instruct",
+        "model": "databricks-claude-sonnet-4",
         "crop_size": f"{x2-x1}x{y2-y1}",
     }
