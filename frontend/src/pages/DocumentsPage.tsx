@@ -223,7 +223,13 @@ export default function DocumentsPage() {
 
       <div className="grid gap-4">
         {docs?.map((doc: Document) => (
-          <div key={doc.document_id} className="bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-colors">
+          <div
+            key={doc.document_id}
+            onClick={() => doc.status === 'parsed' && navigate(`/review/${doc.document_id}`)}
+            className={`bg-white border border-gray-200 rounded-xl p-5 transition-colors ${
+              doc.status === 'parsed' ? 'hover:border-blue-300 hover:shadow-md cursor-pointer' : 'hover:border-gray-300'
+            }`}
+          >
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
                 {doc.status === 'parsed' ? (
@@ -231,6 +237,7 @@ export default function DocumentsPage() {
                     type="checkbox"
                     checked={selected.has(doc.document_id)}
                     onChange={() => toggleSelect(doc.document_id)}
+                    onClick={(e) => e.stopPropagation()}
                     className="w-4 h-4 rounded border-gray-300 mt-1 shrink-0"
                   />
                 ) : (
@@ -257,7 +264,7 @@ export default function DocumentsPage() {
                   )}
                 </div>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                 {doc.status === 'uploaded' && (
                   <button
                     onClick={() => parseMut.mutate(doc.document_id)}
