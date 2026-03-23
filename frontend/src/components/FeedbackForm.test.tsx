@@ -47,14 +47,14 @@ describe('FeedbackForm', () => {
     expect(correctBtn.closest('button')?.className).toContain('green')
   })
 
-  it('clicking Incorrect shows category dropdown', async () => {
+  it('clicking Incorrect shows category chips', async () => {
     renderWithProviders(
       <FeedbackForm documentId="doc1" element={element} pageId={0} existingFeedback={null} />
     )
     fireEvent.click(screen.getByText('Incorrect'))
 
     await waitFor(() => {
-      expect(screen.getByText('Issue Category')).toBeTruthy()
+      expect(screen.getByText('What went wrong?')).toBeTruthy()
     })
   })
 
@@ -62,7 +62,7 @@ describe('FeedbackForm', () => {
     renderWithProviders(
       <FeedbackForm documentId="doc1" element={element} pageId={0} existingFeedback={null} />
     )
-    const submitBtn = screen.getByText('Submit Feedback')
+    const submitBtn = screen.getByText('Save feedback')
     expect(submitBtn.closest('button')?.disabled).toBe(true)
   })
 
@@ -71,7 +71,7 @@ describe('FeedbackForm', () => {
       <FeedbackForm documentId="doc1" element={element} pageId={0} existingFeedback={null} />
     )
     fireEvent.click(screen.getByText('Correct'))
-    const submitBtn = screen.getByText('Submit Feedback')
+    const submitBtn = screen.getByText('Save feedback')
     expect(submitBtn.closest('button')?.disabled).toBe(false)
   })
 })

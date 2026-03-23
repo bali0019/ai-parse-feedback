@@ -5,23 +5,8 @@
 
 import { useMemo, useState, useCallback } from 'react'
 import type { Element, BBox, Feedback, QualityFlag } from '../lib/types'
+import { getElementColor } from '../lib/constants'
 import PdfPageRenderer from './PdfPageRenderer'
-
-const ELEMENT_COLORS: Record<string, string> = {
-  section_header: '#FF6B6B',
-  text: '#4ECDC4',
-  figure: '#45B7D1',
-  caption: '#96CEB4',
-  page_footer: '#FFEAA7',
-  page_header: '#DDA0DD',
-  table: '#98D8C8',
-  list: '#F7DC6F',
-  default: '#BDC3C7',
-}
-
-function getColor(type: string): string {
-  return ELEMENT_COLORS[type.toLowerCase()] || ELEMENT_COLORS.default
-}
 
 interface Props {
   imageDataUri: string | null
@@ -94,7 +79,7 @@ export default function PageAnnotator({
     for (const elem of elements) {
       for (const bbox of elem.bbox || []) {
         if (bbox.page_id === pageId && bbox.coord?.length >= 4) {
-          boxes.push({ element: elem, bbox, color: getColor(elem.type) })
+          boxes.push({ element: elem, bbox, color: getElementColor(elem.type) })
         }
       }
     }
@@ -111,7 +96,7 @@ export default function PageAnnotator({
 
   return (
     <div
-      className="relative inline-block border-2 border-gray-300 rounded-lg overflow-visible bg-white"
+      className="relative inline-block rounded-xl ring-1 ring-gray-200 shadow-sm overflow-visible bg-white"
       style={{ width: displayWidth, height: displayHeight }}
     >
       {usePdf ? (

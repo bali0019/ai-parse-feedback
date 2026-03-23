@@ -6,17 +6,12 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Group, Panel, Separator } from 'react-resizable-panels'
+import { ELEMENT_COLORS } from '../lib/constants'
 import { ChevronLeft, ChevronRight, ArrowLeft, Download, Loader2, CheckCircle2, AlertCircle, CheckCheck, Filter, X, FileText as FileTextIcon } from 'lucide-react'
 import { getDocument, getPageData, getDocumentFeedback, getDocumentPdfUrl, startExport, getExportStatus, downloadExportUrl, reportUrl, submitFeedback, bulkSubmitFeedback } from '../lib/api'
 import PageAnnotator from '../components/PageAnnotator'
 import FeedbackForm from '../components/FeedbackForm'
 import type { Element } from '../lib/types'
-
-const ELEMENT_COLORS: Record<string, string> = {
-  section_header: '#FF6B6B', text: '#4ECDC4', figure: '#45B7D1', caption: '#96CEB4',
-  page_footer: '#D4A017', page_header: '#DDA0DD', table: '#98D8C8', list: '#C9A800',
-}
 
 export default function ReviewPage() {
   const { documentId } = useParams<{ documentId: string }>()
@@ -30,6 +25,37 @@ export default function ReviewPage() {
   const [elementListExpanded, setElementListExpanded] = useState(true)
   const [markAllStatus, setMarkAllStatus] = useState<string | null>(null)
   const selectedElementRef = useRef<HTMLButtonElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [inspectorWidth, setInspectorWidth] = useState(() => {
+    const saved = localStorage.getItem('review-inspector-width')
+    return saved ? parseInt(saved) : 420
+  })
+  const isDragging = useRef(false)
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDragging.current = true
+    const startX = e.clientX
+    const startWidth = inspectorWidth
+    const onMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return
+      const delta = startX - ev.clientX
+      const newWidth = Math.min(800, Math.max(280, startWidth + delta))
+      setInspectorWidth(newWidth)
+    }
+    const onUp = () => {
+      isDragging.current = false
+      localStorage.setItem('review-inspector-width', String(inspectorWidth))
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [inspectorWidth])
 
   // Fetch document metadata
   const { data: doc, isLoading: docLoading } = useQuery({
@@ -429,10 +455,10 @@ export default function ReviewPage() {
         </div>
       )}
 
-      {/* Main content: resizable panels */}
-      <Group orientation="horizontal" className="flex-1">
+      {/* Main content: resizable split */}
+      <div className="flex-1 min-h-0 flex" ref={containerRef}>
         {/* Left: Annotator */}
-        <Panel defaultSize={62} minSize={40}>
+        <div className="flex-1 min-w-0">
           <div className="flex flex-col h-full">
             {/* Page navigator */}
             <div className="h-9 flex items-center justify-center gap-3 bg-gray-50 border-b border-gray-100 shrink-0">
@@ -457,7 +483,7 @@ export default function ReviewPage() {
             </div>
 
             {/* Page image */}
-            <div className="flex-1 overflow-auto p-4 bg-gray-100">
+            <div key={currentPage} className="flex-1 overflow-auto p-4 bg-gray-100 animate-page-enter">
               {pageLoading ? (
                 <div className="flex items-center justify-center h-64 text-gray-500">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" /> Rendering page {currentPage + 1}...
@@ -481,12 +507,16 @@ export default function ReviewPage() {
               )}
             </div>
           </div>
-        </Panel>
+        </div>
 
-        <Separator className="w-1.5 bg-gray-200 hover:bg-blue-400 transition-colors cursor-col-resize data-[resize-handle-active]:bg-blue-500" />
+        {/* Resize handle */}
+        <div
+          onMouseDown={handleDragStart}
+          className="w-1.5 bg-gray-200 hover:bg-blue-400 active:bg-blue-500 transition-colors cursor-col-resize shrink-0"
+        />
 
         {/* Right: Inspector panel */}
-        <Panel defaultSize={38} minSize={20} maxSize={50}>
+        <div style={{ width: inspectorWidth }} className="shrink-0">
           <div className="flex flex-col h-full bg-white">
             {/* Filter chips */}
             {allElementTypes.length > 1 && (
@@ -537,7 +567,7 @@ export default function ReviewPage() {
 
             {/* Element list */}
             <div className={`overflow-y-auto transition-all duration-200 ${
-              selectedElement ? elementListExpanded ? 'max-h-[40%] shrink-0' : 'max-h-[100px] shrink-0' : 'flex-1'
+              selectedElement ? elementListExpanded ? 'max-h-[45%] shrink-0' : 'max-h-0 overflow-hidden shrink-0' : 'flex-1'
             }`}
               role="listbox" aria-label="Page elements"
             >
@@ -580,7 +610,7 @@ export default function ReviewPage() {
 
             {/* Feedback form */}
             {selectedElement && (
-              <div className="border-t border-gray-200 p-4 overflow-y-auto flex-1 min-h-0">
+              <div className="border-t border-gray-200 p-3 overflow-y-auto flex-1 min-h-0">
                 <FeedbackForm
                   documentId={documentId!}
                   element={selectedElement}
@@ -600,8 +630,8 @@ export default function ReviewPage() {
               </div>
             )}
           </div>
-        </Panel>
-      </Group>
+        </div>
+      </div>
 
       {/* Persistent keyboard hint bar */}
       <div className="h-7 bg-gray-50 border-t border-gray-200 px-3 flex items-center justify-between text-xs text-gray-400 shrink-0">
