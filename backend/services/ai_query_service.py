@@ -135,7 +135,7 @@ def crop_and_query(
     )
 
     # Poll until complete (shorter timeout for single region)
-    max_wait = 120
+    max_wait = 300  # 5 min: warehouse cold start can take 60-90s + query execution
     start = time.time()
     while stmt.status.state.value in ("PENDING", "RUNNING"):
         elapsed = time.time() - start

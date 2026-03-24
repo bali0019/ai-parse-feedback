@@ -215,7 +215,7 @@ export default function FeedbackForm({ documentId, element, pageId, existingFeed
                   onClick={() => {
                     setIsCorrect(false)
                     setSuggestedContent(aiResult)
-                    setComment('ai_query suggested different content (model: databricks-claude-sonnet-4)')
+                    setComment(`ai_query suggested different content (model: databricks-claude-sonnet-4)\n\nPrompt used:\n${aiPrompt}`)
                     setAiResultApplied(true)
                   }}
                   className="w-full mt-3 flex items-center justify-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"

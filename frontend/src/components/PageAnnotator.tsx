@@ -12,6 +12,7 @@ interface Props {
   imageDataUri: string | null
   imageWidth: number
   imageHeight: number
+  maxWidth?: number // dynamic max display width from container
   pdfUrl?: string | null
   pageNumber?: number // 1-indexed for PDF.js
   elements: Element[]
@@ -26,6 +27,7 @@ export default function PageAnnotator({
   imageDataUri,
   imageWidth,
   imageHeight,
+  maxWidth,
   pdfUrl,
   pageNumber,
   elements,
@@ -42,8 +44,8 @@ export default function PageAnnotator({
   const effectiveWidth = usePdf ? (pdfDimensions?.width || 900) : imageWidth
   const effectiveHeight = usePdf ? (pdfDimensions?.height || 1200) : imageHeight
 
-  // Scale to fit within max display width
-  const maxDisplayWidth = 900
+  // Scale to fit within max display width (dynamic from container, fallback 900)
+  const maxDisplayWidth = maxWidth || 900
   const scale = useMemo(() => {
     if (usePdf) return 1 // PDF.js already renders at the right size
     if (effectiveWidth <= maxDisplayWidth) return 1

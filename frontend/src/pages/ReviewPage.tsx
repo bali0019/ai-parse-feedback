@@ -26,9 +26,24 @@ export default function ReviewPage() {
   const [markAllStatus, setMarkAllStatus] = useState<string | null>(null)
   const selectedElementRef = useRef<HTMLButtonElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [inspectorWidth, setInspectorWidth] = useState(() => {
-    const saved = localStorage.getItem('review-inspector-width')
-    return saved ? parseInt(saved) : 420
+  const annotatorRef = useRef<HTMLDivElement>(null)
+  const [annotatorWidth, setAnnotatorWidth] = useState(0)
+
+  // Measure annotator container width for dynamic image scaling
+  useEffect(() => {
+    const el = annotatorRef.current
+    if (!el) return
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setAnnotatorWidth(entry.contentRect.width - 32) // subtract padding (p-4 = 16px * 2)
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const [inspectorPct, setInspectorPct] = useState(() => {
+    const saved = localStorage.getItem('review-inspector-pct')
+    return saved ? parseFloat(saved) : 40
   })
   const isDragging = useRef(false)
 
@@ -36,16 +51,18 @@ export default function ReviewPage() {
     e.preventDefault()
     isDragging.current = true
     const startX = e.clientX
-    const startWidth = inspectorWidth
+    const startPct = inspectorPct
+    const containerWidth = containerRef.current?.offsetWidth || window.innerWidth
     const onMove = (ev: MouseEvent) => {
       if (!isDragging.current) return
-      const delta = startX - ev.clientX
-      const newWidth = Math.min(800, Math.max(280, startWidth + delta))
-      setInspectorWidth(newWidth)
+      const deltaPx = startX - ev.clientX
+      const deltaPct = (deltaPx / containerWidth) * 100
+      const newPct = Math.min(55, Math.max(25, startPct + deltaPct))
+      setInspectorPct(newPct)
     }
     const onUp = () => {
       isDragging.current = false
-      localStorage.setItem('review-inspector-width', String(inspectorWidth))
+      localStorage.setItem('review-inspector-pct', String(inspectorPct))
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
       document.body.style.cursor = ''
@@ -55,7 +72,7 @@ export default function ReviewPage() {
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [inspectorWidth])
+  }, [inspectorPct])
 
   // Fetch document metadata
   const { data: doc, isLoading: docLoading } = useQuery({
@@ -483,7 +500,7 @@ export default function ReviewPage() {
             </div>
 
             {/* Page image */}
-            <div key={currentPage} className="flex-1 overflow-auto p-4 bg-gray-100 animate-page-enter">
+            <div ref={annotatorRef} key={currentPage} className="flex-1 overflow-auto p-4 bg-gray-100 animate-page-enter">
               {pageLoading ? (
                 <div className="flex items-center justify-center h-64 text-gray-500">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" /> Rendering page {currentPage + 1}...
@@ -493,6 +510,7 @@ export default function ReviewPage() {
                   imageDataUri={pageData.image?.data_uri || null}
                   imageWidth={pageData.image?.width || 800}
                   imageHeight={pageData.image?.height || 1000}
+                  maxWidth={annotatorWidth > 0 ? annotatorWidth : undefined}
                   pdfUrl={!pageData.image ? getDocumentPdfUrl(documentId!) : null}
                   pageNumber={currentPage + 1}
                   elements={visibleElements}
@@ -516,7 +534,7 @@ export default function ReviewPage() {
         />
 
         {/* Right: Inspector panel */}
-        <div style={{ width: inspectorWidth }} className="shrink-0">
+        <div style={{ width: `${inspectorPct}%` }} className="shrink-0">
           <div className="flex flex-col h-full bg-white">
             {/* Filter chips */}
             {allElementTypes.length > 1 && (
